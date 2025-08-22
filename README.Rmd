@@ -6,7 +6,7 @@ output: github_document
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
-  collapse = TRUE,message = FALSE,error = FALSE,warning = FALSE,
+  collapse = TRUE,message = FALSE,error = FALSE,warning = FALSE,eval=FALSE,
   comment = "#>"
 )
 ```
@@ -19,6 +19,7 @@ knitr::opts_chunk$set(
 library(tidyverse)
 library(ncdf4)
 library(geobr)
+source("R/my_functions.R")
 ```
 
 ## Ler um arquivo de dados `.NC`
@@ -26,38 +27,33 @@ library(geobr)
 ```{r}
 # Buscar os nomes dos arquivo .nc4
 list_nc4 <- list.files("data-raw/",
-           recursive = TRUE,full.names = TRUE,pattern = ".nc4")
+           recursive = TRUE,
+           full.names = TRUE,
+           pattern = ".nc4")
 
 # Abrindo o1 arquivo
-nc_obj <- nc_open(list_nc4[1])
+nc_obj <- nc_open(list_nc4[1250])
 
 # buscando os nomes dos atributos no arquivo
-# names(nc_obj[['var']])
+names(nc_obj[['var']])
 ```
 
 ## Função para ler um arquivo e extrair colunas de interesse
 
+## Vamos ler todos os arquivos na pasta
 ```{r}
-## função para ler arquivos NCD4
-ncdf_reader <- function(file_path){
-  nc_file <- ncdf4::nc_open(file_path)
-  df <- data.frame(
-    "longitude"=ncdf4::ncvar_get(nc_file,varid="longitude"),
-    "latitude"=ncdf4::ncvar_get(nc_file,varid="latitude"),
-    "time"=ncdf4::ncvar_get(nc_file,varid="time"),
-    "xco2"=ncdf4::ncvar_get(nc_file,varid="xco2"),
-    "xco2_quality_flag"=ncdf4::ncvar_get(nc_file,varid="xco2_quality_flag"),
-    "xco2_incerteza"=ncdf4::ncvar_get(nc_file,varid="xco2_uncertainty"),
-    "fs"=ncdf4::ncvar_get(nc_file,varid="Retrieval/fs"),
-    "fs_rel"=ncdf4::ncvar_get(nc_file,varid="Retrieval/fs_rel"),
-    "path" = file_path
-  )
-  ncdf4::nc_close(nc_file)
-  return(df)
-}
+ncdf_reader <- function(path){
+  id_stl <- stringr::str_split(path,"/",simplify = TRUE)[,3]
+  if(id_stl == "OCO2" | id_stl == "OCO3") {
+    df_aux <- get_oco2_xco2(path)
+    }else(
+    df_aux <- get_oco2_sif(path)  
+    )
+  return(df_aux)
+};ncdf_reader(list_nc4[1250])
 ```
 
-## Vamos ler todos os arquivos na pasta
+
 ```{r}
 # Usando a função map do dplyr
 data_set <- map_df(list_nc4,ncdf_reader)
