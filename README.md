@@ -6,10 +6,10 @@
 ### 🔗 Links para Download dos dados compilados:
 
 | Dados Processados Para Download |
-|:-------------------------------:|
-|    ⬇️ [data-set-xco2.rds]()     |
-|     ⬇️ [data-set-sif.rds]()     |
-|      [faxina-de-dados.R]()      |
+|:--:|
+| ⬇️ [data-set-xco2.rds](https://drive.google.com/file/d/1E6oYKw7WyBRcgLaiFlPP1-ZTXTG4QO-2/view?usp=sharing) |
+| ⬇️ [data-set-sif.rds](https://drive.google.com/file/d/1Tvy4T2O3YwY9sQwvHnDD3sZWkoqvwZbw/view?usp=sharing) |
+| [faxina-de-dados.R](https://raw.githubusercontent.com/arpanosso/projeto-mestrado-perim/refs/heads/master/data-raw/faxina-de-dados.R) |
 
 Formato dos arquivos:
 
