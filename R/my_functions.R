@@ -19,6 +19,9 @@ get_oco2_sif <- function(file_path){
     "quality_flag"=ncdf4::ncvar_get(nc_file,varid="Quality_Flag"),
     "path" = file_path
   )
+  df <- df |>
+    dplyr::filter(latitude >= -35 & latitude <= 5,
+                  longitude >= -75 & longitude <= -34)
   ncdf4::nc_close(nc_file)
   return(df)
 }
@@ -37,6 +40,9 @@ get_oco2_xco2 <- function(file_path){
     # "fs_rel"=ncdf4::ncvar_get(nc_file,varid="Retrieval/fs_rel"),
     "path" = file_path
   )
+  df <- df |>
+    dplyr::filter(latitude >= -35 & latitude <= 5,
+                  longitude >= -75 & longitude <= -34)
   ncdf4::nc_close(nc_file)
   return(df)
 }

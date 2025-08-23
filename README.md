@@ -1,99 +1,18 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# Projeto Mestrado Rodrigo Perim
+# Projeto Mestrado - Rodrigo Perim
 
-## Carregando Pacotes
+### 🔗 Links para Download dos dados compilados:
 
-``` r
-library(tidyverse)
-library(ncdf4)
-library(geobr)
-source("R/my_functions.R")
-```
+| Dados Processados Para Download |
+|:-------------------------------:|
+|    ⬇️ [data-set-xco2.rds]()     |
+|     ⬇️ [data-set-sif.rds]()     |
+|      [faxina-de-dados.R]()      |
 
-## Ler um arquivo de dados `.NC`
+Formato dos arquivos:
 
-``` r
-# Buscar os nomes dos arquivo .nc4
-list_nc4 <- list.files("data-raw/",
-           recursive = TRUE,
-           full.names = TRUE,
-           pattern = ".nc4")
+> .rds (formato nativo do R para carregamento rápido)
 
-# Abrindo o1 arquivo
-nc_obj <- nc_open(list_nc4[1250])
-
-# buscando os nomes dos atributos no arquivo
-names(nc_obj[['var']])
-```
-
-## Função para ler um arquivo e extrair colunas de interesse
-
-## Vamos ler todos os arquivos na pasta
-
-``` r
-ncdf_reader <- function(path){
-  id_stl <- stringr::str_split(path,"/",simplify = TRUE)[,3]
-  if(id_stl == "OCO2" | id_stl == "OCO3") {
-    df_aux <- get_oco2_xco2(path)
-    }else(
-    df_aux <- get_oco2_sif(path)  
-    )
-  return(df_aux)
-};ncdf_reader(list_nc4[1250])
-```
-
-``` r
-# Usando a função map do dplyr
-data_set <- map_df(list_nc4,ncdf_reader)
-```
-
-## Resumo dos dados
-
-``` r
-data_set <- data_set |> 
-  mutate(
-   time_1 = lubridate::as_datetime(time, tz = "America/Sao_Paulo"),
-   time = lubridate::date(time),
-  )
-glimpse(data_set)
-```
-
-## Retirando 500 obs do banco de dados e plotando
-
-``` r
-data_set |> 
-  sample_n(500) |> 
-  ggplot(aes(x=longitude, y=latitude)) +
-  geom_point()
-```
-
-## Então vamos plotar dentro do mapa do Brasil
-
-``` r
-## Pegando o contorno do BR
-br <- read_country(showProgress = FALSE)
-```
-
-fazer o plot do BR
-
-``` r
-br |>
-  ggplot2::ggplot() +
-  ggplot2::geom_sf(fill="white", color="#FEBF57",
-                   size=.15, show.legend = FALSE)
-```
-
-``` r
-br |>
-  ggplot() +
-  geom_sf(fill="white", color="#FEBF57",
-          size=.15, show.legend = FALSE) +
-  geom_point(data= data_set |> 
-               sample_n(10500) ,
-             aes(x=longitude, y=latitude),
-             shape=3,
-             col="red",
-             alpha=0.2)
-```
+> salve os arquivos na pasta `data` do projeto
