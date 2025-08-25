@@ -36,7 +36,13 @@ Formato dos arquivos:
 
 ### 🧹 Faxina de dados
 
-Carregando os dados
+#### Carregando os polígonos do Brasil
+
+``` r
+country_br <- geobr::read_country(showProgress = FALSE)
+```
+
+#### Carregando os dados
 
 ``` r
 data_set_xco2 <- readr::read_rds("data/data-set-xco2.rds") |> 
@@ -59,14 +65,14 @@ dplyr::glimpse(data_set_xco2)
 #> $ year              <dbl> 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020…
 #> $ month             <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
 #> $ day               <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
-data_set_xco2$year |> unique()
-#> [1] 2020 2021 2022 2023 2024
 ```
 
 ``` r
 data_set_sif <- readr::read_rds("data/data-set-sif.rds") |> 
   dplyr::mutate(
-    time = lubridate::as_datetime(time, tz = "America/Sao_Paulo"),
+    time = lubridate::as_datetime(time, 
+                                  origin = "1990-01-01 00:00:00",
+                                  tz = "America/Sao_Paulo"),
     year = lubridate::year(time),
     month = lubridate::month(time),
     day = lubridate::day(time),
@@ -74,7 +80,7 @@ data_set_sif <- readr::read_rds("data/data-set-sif.rds") |>
 dplyr::glimpse(data_set_sif)
 #> Rows: 27,462,772
 #> Columns: 17
-#> $ time               <dttm> 2000-01-01 14:41:22, 2000-01-01 14:41:23, 2000-01-…
+#> $ time               <dttm> 2020-01-01 13:41:22, 2020-01-01 13:41:23, 2020-01-…
 #> $ sza                <dbl> 24.44861, 24.44421, 24.43042, 24.42725, 24.41541, 2…
 #> $ vza                <dbl> 0.15972900, 0.15936279, 0.36914062, 0.25946045, 0.4…
 #> $ saz                <dbl> 264.3497, 264.1766, 264.1306, 263.6334, 263.6737, 2…
@@ -88,9 +94,7 @@ dplyr::glimpse(data_set_sif)
 #> $ daily_sif771       <dbl> 0.34991264, 0.19964695, 0.29221249, -0.16454506, 0.…
 #> $ quality_flag       <int> 0, 1, 0, 2, 2, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, …
 #> $ path               <chr> "data-raw/2020/OCO2 SIF/oco2_LtSIF_200101_B11012Ar_…
-#> $ year               <dbl> 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 200…
+#> $ year               <dbl> 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 202…
 #> $ month              <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
 #> $ day                <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-data_set_sif$year |> unique()
-#> [1] 2000 2001 2002 2003 2004
 ```

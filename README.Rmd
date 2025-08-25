@@ -52,7 +52,15 @@ Formato dos arquivos:
  
 ### 🧹 Faxina de dados
 
-Carregando os dados
+
+#### Carregando os polígonos do Brasil
+
+```{r}
+country_br <- geobr::read_country(showProgress = FALSE)
+```
+
+
+#### Carregando os dados
 
 ```{r}
 data_set_xco2 <- readr::read_rds("data/data-set-xco2.rds") |> 
@@ -63,20 +71,20 @@ data_set_xco2 <- readr::read_rds("data/data-set-xco2.rds") |>
     day = lubridate::day(time),
   )
 dplyr::glimpse(data_set_xco2)
-data_set_xco2$year |> unique()
 ```
 
 
 ```{r}
 data_set_sif <- readr::read_rds("data/data-set-sif.rds") |> 
   dplyr::mutate(
-    time = lubridate::as_datetime(time, tz = "America/Sao_Paulo"),
+    time = lubridate::as_datetime(time, 
+                                  origin = "1990-01-01 00:00:00",
+                                  tz = "America/Sao_Paulo"),
     year = lubridate::year(time),
     month = lubridate::month(time),
     day = lubridate::day(time),
   )
 dplyr::glimpse(data_set_sif)
-data_set_sif$year |> unique()
 ```
 
 

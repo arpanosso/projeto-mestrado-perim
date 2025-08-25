@@ -46,3 +46,12 @@ get_oco2_xco2 <- function(file_path){
   ncdf4::nc_close(nc_file)
   return(df)
 }
+
+
+## Classificação de pertencimento de ponto em polígono
+def_pol <- function(x, y, pol){
+  as.logical(sp::point.in.polygon(point.x = x,
+                                  point.y = y,
+                                  pol.x = pol[,1],
+                                  pol.y = pol[,2]))
+}
