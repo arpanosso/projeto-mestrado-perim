@@ -36,7 +36,7 @@ Formato dos arquivos:
 
 ### 🧹 Faxina de dados
 
-#### Carregando os polígonos do Brasil
+#### Carregando o polígono do Brasil
 
 ``` r
 country_br <- geobr::read_country(showProgress = FALSE)
@@ -46,29 +46,37 @@ country_br <- geobr::read_country(showProgress = FALSE)
 
 ``` r
 data_set_xco2 <- readr::read_rds("data/data-set-xco2.rds") |> 
+  dplyr::filter(
+    longitude >=-59.7700 & longitude <= -49.8361,
+    latitude >=-12.3561 & latitude <= -1.6058
+  ) |> 
   dplyr::mutate(
     time = lubridate::as_datetime(time, tz = "America/Sao_Paulo"),
     year = lubridate::year(time),
     month = lubridate::month(time),
     day = lubridate::day(time),
-  )
+  ) 
 dplyr::glimpse(data_set_xco2)
-#> Rows: 14,113,963
+#> Rows: 579,655
 #> Columns: 10
-#> $ longitude         <dbl> -42.82634, -42.83171, -42.83667, -42.84213, -42.8476…
-#> $ latitude          <dbl> -22.90563, -22.91458, -22.89448, -22.90340, -22.9122…
-#> $ time              <dttm> 2020-01-01 13:41:10, 2020-01-01 13:41:10, 2020-01-0…
-#> $ xco2              <dbl> 411.1394, 408.3469, 408.4254, 409.1369, 409.6229, 40…
-#> $ xco2_quality_flag <int> 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0…
-#> $ xco2_incerteza    <dbl> 0.3705117, 0.3717737, 0.3879336, 0.4135483, 0.360514…
-#> $ path              <chr> "data-raw/2020/OCO2/oco2_LtCO2_200101_B11210Ar_24091…
+#> $ longitude         <dbl> -54.08904, -54.24266, -54.35723, -54.36071, -54.3601…
+#> $ latitude          <dbl> -8.548561, -7.880873, -7.368739, -7.360842, -7.37159…
+#> $ time              <dttm> 2020-01-13 14:10:00, 2020-01-13 14:10:13, 2020-01-1…
+#> $ xco2              <dbl> 412.2603, 412.8798, 413.4058, 413.8155, 414.6043, 41…
+#> $ xco2_quality_flag <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1…
+#> $ xco2_incerteza    <dbl> 0.5092796, 0.4916783, 0.4935933, 0.5007727, 0.514624…
+#> $ path              <chr> "data-raw/2020/OCO2/oco2_LtCO2_200113_B11210Ar_24091…
 #> $ year              <dbl> 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020…
 #> $ month             <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
-#> $ day               <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+#> $ day               <int> 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, …
 ```
 
 ``` r
 data_set_sif <- readr::read_rds("data/data-set-sif.rds") |> 
+  dplyr::filter(
+    longitude >=-59.7700 & longitude <= -49.8361,
+    latitude >=-12.3561 & latitude <= -1.6058
+  ) |>  
   dplyr::mutate(
     time = lubridate::as_datetime(time, 
                                   origin = "1990-01-01 00:00:00",
@@ -78,23 +86,53 @@ data_set_sif <- readr::read_rds("data/data-set-sif.rds") |>
     day = lubridate::day(time),
   )
 dplyr::glimpse(data_set_sif)
-#> Rows: 27,462,772
+#> Rows: 2,755,525
 #> Columns: 17
-#> $ time               <dttm> 2020-01-01 13:41:22, 2020-01-01 13:41:23, 2020-01-…
-#> $ sza                <dbl> 24.44861, 24.44421, 24.43042, 24.42725, 24.41541, 2…
-#> $ vza                <dbl> 0.15972900, 0.15936279, 0.36914062, 0.25946045, 0.4…
-#> $ saz                <dbl> 264.3497, 264.1766, 264.1306, 263.6334, 263.6737, 2…
-#> $ vaz                <dbl> 349.4449463, 349.2926025, 9.9569092, 0.1663208, 11.…
-#> $ longitude          <dbl> -42.86682, -42.88593, -42.90643, -42.95166, -42.962…
-#> $ latitude           <dbl> -22.83197, -22.75171, -22.72925, -22.49982, -22.517…
-#> $ sif740             <dbl> 2.0291252, 1.9367952, 1.2935743, -0.2750387, 2.0776…
-#> $ sif740_uncertainty <dbl> 0.4810228, 0.4750776, 0.5201931, 0.5690994, 0.62952…
-#> $ daily_sif740       <dbl> 0.78077316, 0.74496078, 0.49750042, -0.10566425, 0.…
-#> $ daily_sif757       <dbl> 0.51616192, 0.69380951, 0.22501564, 0.10593128, 0.3…
-#> $ daily_sif771       <dbl> 0.34991264, 0.19964695, 0.29221249, -0.16454506, 0.…
-#> $ quality_flag       <int> 0, 1, 0, 2, 2, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, …
-#> $ path               <chr> "data-raw/2020/OCO2 SIF/oco2_LtSIF_200101_B11012Ar_…
+#> $ time               <dttm> 2020-01-02 14:27:47, 2020-01-02 14:27:58, 2020-01-…
+#> $ sza                <dbl> 24.21838, 24.43658, 25.21167, 25.22522, 25.20837, 2…
+#> $ vza                <dbl> 18.96948, 19.25812, 19.79761, 19.75006, 19.91901, 1…
+#> $ saz                <dbl> 240.8419, 239.6188, 235.9193, 235.8642, 235.9224, 2…
+#> $ vaz                <dbl> 61.69757, 59.83484, 56.50873, 56.77283, 55.88147, 5…
+#> $ longitude          <dbl> -58.04297, -58.18042, -58.59381, -58.59863, -58.597…
+#> $ latitude           <dbl> -12.287109, -11.691345, -9.810913, -9.781616, -9.81…
+#> $ sif740             <dbl> 1.68288898, 2.33085060, 3.39827824, 3.13973331, 1.7…
+#> $ sif740_uncertainty <dbl> 0.6398249, 0.5907574, 0.5819044, 0.6214972, 0.57474…
+#> $ daily_sif740       <dbl> 0.60762787, 0.83928204, 1.21343613, 1.12081718, 0.6…
+#> $ daily_sif757       <dbl> 0.43646145, 0.56351566, 0.39550304, 0.42863560, 0.3…
+#> $ daily_sif771       <dbl> 0.24913883, 0.37035179, 0.81494141, 0.71052551, 0.3…
+#> $ quality_flag       <int> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
+#> $ path               <chr> "data-raw/2020/OCO2 SIF/oco2_LtSIF_200102_B11012Ar_…
 #> $ year               <dbl> 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 202…
 #> $ month              <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-#> $ day                <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+#> $ day                <int> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
 ```
+
+``` r
+country_br |> 
+  ggplot2::ggplot()+
+  ggplot2::geom_sf(fill = "lightgray", color = "black") +
+  ggplot2::geom_point(data = data_set_xco2 |> 
+                        dplyr::filter(year==2020),
+                      ggplot2::aes(longitude, latitude),
+                      size=.3,color="red") +
+  # ajusta os limites do mapa
+  ggplot2::coord_sf(xlim = c(-72, -48), ylim = c(-15, 0)) +
+  ggplot2::labs(title = "XCO2")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+``` r
+country_br |> 
+  ggplot2::ggplot()+
+  ggplot2::geom_sf(fill = "lightgray", color = "black") +
+  ggplot2::geom_point(data = data_set_sif |> 
+                        dplyr::filter(year==2020),
+                      ggplot2::aes(longitude, latitude),
+                      size=.3,color="blue") +
+  # ajusta os limites do mapa
+  ggplot2::coord_sf(xlim = c(-72, -48), ylim = c(-15, 0))+
+  ggplot2::labs(title = "SIF")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->

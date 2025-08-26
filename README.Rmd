@@ -53,7 +53,7 @@ Formato dos arquivos:
 ### 🧹 Faxina de dados
 
 
-#### Carregando os polígonos do Brasil
+#### Carregando o polígono do Brasil
 
 ```{r}
 country_br <- geobr::read_country(showProgress = FALSE)
@@ -64,18 +64,26 @@ country_br <- geobr::read_country(showProgress = FALSE)
 
 ```{r}
 data_set_xco2 <- readr::read_rds("data/data-set-xco2.rds") |> 
+  dplyr::filter(
+    longitude >=-59.7700 & longitude <= -49.8361,
+    latitude >=-12.3561 & latitude <= -1.6058
+  ) |> 
   dplyr::mutate(
     time = lubridate::as_datetime(time, tz = "America/Sao_Paulo"),
     year = lubridate::year(time),
     month = lubridate::month(time),
     day = lubridate::day(time),
-  )
+  ) 
 dplyr::glimpse(data_set_xco2)
 ```
 
 
 ```{r}
 data_set_sif <- readr::read_rds("data/data-set-sif.rds") |> 
+  dplyr::filter(
+    longitude >=-59.7700 & longitude <= -49.8361,
+    latitude >=-12.3561 & latitude <= -1.6058
+  ) |>  
   dplyr::mutate(
     time = lubridate::as_datetime(time, 
                                   origin = "1990-01-01 00:00:00",
@@ -88,4 +96,29 @@ dplyr::glimpse(data_set_sif)
 ```
 
 
+```{r}
+country_br |> 
+  ggplot2::ggplot()+
+  ggplot2::geom_sf(fill = "lightgray", color = "black") +
+  ggplot2::geom_point(data = data_set_xco2 |> 
+                        dplyr::filter(year==2020),
+                      ggplot2::aes(longitude, latitude),
+                      size=.3,color="red") +
+  # ajusta os limites do mapa
+  ggplot2::coord_sf(xlim = c(-72, -48), ylim = c(-15, 0)) +
+  ggplot2::labs(title = "XCO2")
+```
 
+
+```{r}
+country_br |> 
+  ggplot2::ggplot()+
+  ggplot2::geom_sf(fill = "lightgray", color = "black") +
+  ggplot2::geom_point(data = data_set_sif |> 
+                        dplyr::filter(year==2020),
+                      ggplot2::aes(longitude, latitude),
+                      size=.3,color="blue") +
+  # ajusta os limites do mapa
+  ggplot2::coord_sf(xlim = c(-72, -48), ylim = c(-15, 0))+
+  ggplot2::labs(title = "SIF")
+```
