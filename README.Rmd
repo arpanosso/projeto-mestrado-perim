@@ -75,6 +75,7 @@ data_set_xco2 <- readr::read_rds("data/data-set-xco2.rds") |>
     day = lubridate::day(time),
   ) 
 dplyr::glimpse(data_set_xco2)
+readr::write_rds(data_set_xco2,"data/data-set-xco2-filter.rds")
 ```
 
 
@@ -93,6 +94,7 @@ data_set_sif <- readr::read_rds("data/data-set-sif.rds") |>
     day = lubridate::day(time),
   )
 dplyr::glimpse(data_set_sif)
+readr::write_rds(data_set_sif,"data/data-set-sif-filter.rds")
 ```
 
 
