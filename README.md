@@ -165,15 +165,31 @@ def_pol <- function(x, y, pol){
 #                       shape=3,
 #                       col="red",
 #                       alpha=0.2)
-# 
-# # Classificando pontos
-# data_set <- dff
-# state <- 0
-# x <- data_set |> dplyr::pull(longitude)
-# y <- data_set |> dplyr::pull(latitude)
-# for(i in 1:nrow(data_set)) state[i] <- get_geobr_state(x[i],y[i])
-# data_set <- data_set |> cbind(state)
-# dplyr::glimpse(data_set)
+dff <- readr::read_rds("data/data-set-xco2-br.rds") |> 
+  dplyr::mutate(
+    country = flag_nordeste|flag_norte|flag_suldeste|
+      flag_sul|flag_centroeste
+  )
+
+source("r/my_functions.R")
+
+dff |>
+  dplyr::filter(
+    country
+  ) |> 
+  dplyr::sample_n(10000) |> 
+  ggplot2::ggplot(ggplot2::aes(longitude,latitude)) +
+  ggplot2::geom_point()
+
+# Classificando pontos
+data_set <- dff
+state <- 0
+x <- data_set |> dplyr::pull(longitude)
+y <- data_set |> dplyr::pull(latitude)
+for(i in 1:nrow(data_set)) state[i] <- get_geobr_state(x[i],y[i])
+data_set <- data_set |> cbind(state)
+dplyr::glimpse(data_set)
+
 # readr::write_rds(data_set,"../data/oco2-sif.rds")
 ```
 
