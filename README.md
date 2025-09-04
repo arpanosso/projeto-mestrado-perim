@@ -39,10 +39,16 @@ Formato dos arquivos:
 #### Carregando o polígono do Brasil
 
 ``` r
+source("R/my_functions.R")
 country_br <- geobr::read_country(showProgress = FALSE)
 ```
 
 #### Carregando os dados
+
+Primeira Versão do Banco de dados, muito grande, pois os dados foram
+baixados para o mundo todo. Código abaixo cria um recorte a partir das
+coordenadas ondem está situao o Brasil, além disso são construídas as
+variávies de data, e salva uma nova versão dos dados.
 
 ``` r
 data_set_xco2 <- readr::read_rds("data/data-set-xco2.rds") |> 
@@ -78,33 +84,11 @@ dplyr::glimpse(data_set_sif)
 readr::write_rds(data_set_sif,"data/data-set-sif-filter.rds")
 ```
 
-``` r
-country_br |> 
-  ggplot2::ggplot()+
-  ggplot2::geom_sf(fill = "lightgray", color = "black") +
-  ggplot2::geom_point(data = data_set_xco2 |> 
-                        dplyr::filter(year==2020),
-                      ggplot2::aes(longitude, latitude),
-                      size=.3,color="red") +
-  # ajusta os limites do mapa
-  ggplot2::coord_sf(xlim = c(-72, -48), ylim = c(-15, 0)) +
-  ggplot2::labs(title = "XCO2")
-```
-
-``` r
-country_br |> 
-  ggplot2::ggplot()+
-  ggplot2::geom_sf(fill = "lightgray", color = "black") +
-  ggplot2::geom_point(data = data_set_sif |> 
-                        dplyr::filter(year==2020),
-                      ggplot2::aes(longitude, latitude),
-                      size=.3,color="blue") +
-  # ajusta os limites do mapa
-  ggplot2::coord_sf(xlim = c(-72, -48), ylim = c(-15, 0))+
-  ggplot2::labs(title = "SIF")
-```
-
 ## Filtrando os dados para Br
+
+Para filtar os dados para o território brasileiro, algumas correções dos
+polígonos do IBGE são necessárias, e realizadas abaixo. O filtro é
+realizado por região.
 
 ``` r
 regiao <- geobr::read_region(showProgress = FALSE)
@@ -119,15 +103,6 @@ pol_nordeste <- pol_nordeste[!((pol_nordeste[,1]>=-38.7 & pol_nordeste[,1]<=-38.
 
 pol_nordeste <- pol_nordeste[pol_nordeste[,1]<=-34,]
 pol_nordeste <- pol_nordeste[!((pol_nordeste[,1]>=-38.7 & pol_nordeste[,1]<=-38.6) & pol_nordeste[,2]<= -15),]
-```
-
-``` r
-def_pol <- function(x, y, pol){
-  as.logical(sp::point.in.polygon(point.x = x,
-                                  point.y = y,
-                                  pol.x = pol[,1],
-                                  pol.y = pol[,2]))
-}
 ```
 
 ``` r
@@ -153,19 +128,25 @@ def_pol <- function(x, y, pol){
 # readr::write_rds(data_set_xco2_br,"data/data-set-xco2-br.rds")
 ```
 
+## Agora precisamos definir as regiões e estados
+
 ``` r
-# country_br |>
-#   ggplot2::ggplot() +
-#   ggplot2::geom_sf(fill="white", color="#FEBF57",
-#                    size=.15, show.legend = FALSE) +
-#   ggplot2::geom_point(data= data_set_xco2_br |>
-#                         dplyr::sample_n(1000) |>
-#                         dplyr::filter(flag_nordeste) ,
-#                       ggplot2::aes(x=longitude,y=latitude),
-#                       shape=3,
-#                       col="red",
-#                       alpha=0.2)
+country_br |>
+  ggplot2::ggplot() +
+  ggplot2::geom_sf(fill="white", color="#FEBF57",
+                   size=.15, show.legend = FALSE) +
+  ggplot2::geom_point(data= dff |>
+                        dplyr::filter(
+                          country
+                        ) |> 
+                        dplyr::sample_n(15000),
+                      ggplot2::aes(x=longitude,y=latitude))
+```
+
+``` r
 dff <- readr::read_rds("data/data-set-xco2-br.rds") |> 
+  dplyr::filter(!((latitude > -22.5 & latitude < -20) & 
+                  (longitude > -40)) ) |> 
   dplyr::mutate(
     country = flag_nordeste|flag_norte|flag_suldeste|
       flag_sul|flag_centroeste
@@ -177,18 +158,19 @@ dff |>
   dplyr::filter(
     country
   ) |> 
-  dplyr::sample_n(10000) |> 
+  dplyr::sample_n(30000) |> 
   ggplot2::ggplot(ggplot2::aes(longitude,latitude)) +
-  ggplot2::geom_point()
+  ggplot2::geom_point() # +
+  # ggplot2::coord_cartesian(xlim = c(-45,-35),ylim = c(-25,-15))
 
 # Classificando pontos
-data_set <- dff
-state <- 0
-x <- data_set |> dplyr::pull(longitude)
-y <- data_set |> dplyr::pull(latitude)
-for(i in 1:nrow(data_set)) state[i] <- get_geobr_state(x[i],y[i])
-data_set <- data_set |> cbind(state)
-dplyr::glimpse(data_set)
+# data_set <- dff
+# state <- 0
+# x <- data_set |> dplyr::pull(longitude)
+# y <- data_set |> dplyr::pull(latitude)
+# for(i in 1:nrow(data_set)) state[i] <- get_geobr_state(x[i],y[i])
+# data_set <- data_set |> cbind(state)
+# dplyr::glimpse(data_set)
 
 # readr::write_rds(data_set,"../data/oco2-sif.rds")
 ```
@@ -232,6 +214,36 @@ dplyr::glimpse(data_set)
 #                       alpha=0.2)
 # 
 # # Classificando pontos
+# data_set <- dff
+# state <- 0
+# x <- data_set |> dplyr::pull(longitude)
+# y <- data_set |> dplyr::pull(latitude)
+# for(i in 1:nrow(data_set)) state[i] <- get_geobr_state(x[i],y[i])
+# data_set <- data_set |> cbind(state)
+# dplyr::glimpse(data_set)
+# readr::write_rds(data_set,"../data/oco2-sif.rds")
+```
+
+``` r
+dff <- readr::read_rds("data/data-set-sif-br.rds") |> 
+  dplyr::filter(!((latitude > -22.5 & latitude < -20) & 
+                  (longitude > -40)),
+                (quality_flag ==0 | quality_flag == 1)) |> 
+  dplyr::mutate(
+    country = flag_nordeste|flag_norte|flag_suldeste|
+      flag_sul|flag_centroeste
+  )
+
+dff |>
+  dplyr::filter(
+    country
+  ) |> 
+  dplyr::sample_n(30000) |> 
+  ggplot2::ggplot(ggplot2::aes(longitude,latitude)) +
+  ggplot2::geom_point() # +
+  # ggplot2::coord_cartesian(xlim = c(-45,-35),ylim = c(-25,-15))
+
+# Classificando pontos
 # data_set <- dff
 # state <- 0
 # x <- data_set |> dplyr::pull(longitude)
