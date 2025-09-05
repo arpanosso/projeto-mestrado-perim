@@ -233,7 +233,6 @@ get_geobr_state_muni <- function(x1,y1,df){
 ```
 
 ```{r}
-40/10000*2650000/60/60
 # Classificando pontos
 tictoc::tic()
 dff_sm <- dff |> 
@@ -241,14 +240,14 @@ dff_sm <- dff |>
     country,
     xco2_quality_flag == 0,
   ) |> 
-  dplyr::sample_n(10000) |> 
+  # dplyr::sample_n(10000) |> 
   dplyr::group_by(longitude,latitude) |> 
   dplyr::mutate(
     muni_state = get_geobr_state_muni(longitude,latitude,municipality_df)
   ) |> 
   dplyr::ungroup()
 tictoc::toc()
-# readr::write_rds(dff_sm,"data/data-set-xco2-state-muni.rds")
+readr::write_rds(dff_sm,"data/data-set-xco2-state-muni.rds")
 ```
 # SIF
 
@@ -334,13 +333,17 @@ dff |>
 
 ```{r}
 # Classificando pontos
-dff_sm <- dff |> dplyr::slice(1:10) |> 
+tictoc::tic()
+dff_sm <- dff |> 
   dplyr::filter(
     country,
   ) |> 
+  # dplyr::sample_n(10000) |> 
   dplyr::group_by(longitude,latitude) |> 
   dplyr::mutate(
     muni_state = get_geobr_state_muni(longitude,latitude,municipality_df)
-  ) 
+  ) |> 
+  dplyr::ungroup()
+tictoc::toc()
 readr::write_rds(dff_sm,"data/data-set-sif-state-muni.rds")
 ```
