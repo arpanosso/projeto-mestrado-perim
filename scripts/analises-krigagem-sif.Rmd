@@ -1,0 +1,407 @@
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  warning = FALSE,
+  error = FALSE,
+  message = FALSE,
+  eval = TRUE,
+  comment = "#>"
+)
+```
+
+## Carregando pacotes
+```{r}
+library(tidyverse)
+library(ggridges)
+library(ggpubr)
+library(geobr)
+library(gstat)
+library(vegan)
+library(dplyr)
+library(ggplot2)
+source("../R/my-function.R")
+```
+
+# Carregando polígono do Brasil
+```{r}
+country_br <- geobr::read_country(showProgress = FALSE)
+```
+
+# Carregando os dados de sif e filtrar
+```{r}
+data_set_sif <- readr::read_rds("../data/data-set-sif-filter.rds") |> 
+  dplyr::filter(
+    quality_flag <= 1
+  ) # passar um mutate para criar a sif de análise...veja com o Luis Miguel
+```
+
+# Criando coluna de semestre
+```{r}
+data_set_sif <- data_set_sif %>%
+  mutate(
+    epoca = case_when(
+      month %in% 1:6   ~ "Jan_Jun",
+      month %in% 7:12  ~ "Jul_Dez"
+    )
+  )
+glimpse(data_set_sif)
+```
+
+
+#####
+AGORA COMEÇA O SEMIVARIOGRAMA E A KRIGAGEM DOS GURI
+ 
+ 
+## Criando e filtrando o grid da área de estudo
+```{r}
+min_lon <- -59.7700
+max_lon <- -49.8361
+min_lat <- -12.3561
+max_lat <- -1.6058
+dist_grid <- 0.20
+grid_quadrante <- expand.grid(
+  longitude = seq(min_lon, max_lon, dist_grid),
+  latitude = seq(min_lat, max_lat, dist_grid)
+)
+
+grid_quadrante |> 
+  ggplot(aes(x = longitude, y = latitude)) +
+   geom_point(size = 0.1, color = "blue") +
+   labs(title = "Grid de Pontos para a Area de Estudo") +
+   theme_minimal() +
+   coord_equal()
+readr::write_rds(grid_quadrante, "../data/grid_quadrante.rds")
+glimpse(grid_quadrante)
+sp::coordinates(grid_quadrante) = ~ longitude + latitude
+```
+
+## PASSO 1)
+
+```{r}
+meu_ano = 2020
+minha_epoca = "Jan_Jun"
+nr <- data_set_sif |>
+ filter(year == meu_ano,
+        epoca == minha_epoca) |>
+ nrow()
+
+df_aux_geo <- data_set_sif |>
+ filter(year == meu_ano,
+        epoca == minha_epoca) |>
+ sample_n(.05*nr) |> # <--- aqui voc pode maximizar em relação ao teu tempo de processamento
+ select(longitude, latitude, daily_sif757) # <-- Colocar a sif criada anteriormente
+sp::coordinates(df_aux_geo) = ~ longitude + latitude
+plot(df_aux_geo@coords)
+```
+
+## PASSO 2 - Construção do Semivariograma Experimental
+
+```{r}
+form <- daily_sif757 ~ 1 # <-- Colocar a sif criada anteriormente
+vari_exp <- gstat::variogram(form, data = df_aux_geo,
+                     cressie = FALSE,
+                     cutoff = 8, # distância máxima 8
+                     width = .45) # distancia entre pontos
+vari_exp  |>
+ggplot(aes(x=dist, y=gamma)) +
+ geom_point() +
+ labs(x="lag (graus)",
+      y=expression(paste(gamma,"(h)")))
+```
+## PASSO 3) Ajuste dos modelos matemáticos teóricos ao semivariograma experimental
+
+```{r}
+patamar=0.033
+alcance=2
+epepita=0.02
+modelo_1 <- fit.variogram(vari_exp,vgm(patamar,"Sph",alcance,epepita))
+modelo_2 <- fit.variogram(vari_exp,vgm(patamar,"Exp",alcance,epepita))
+modelo_3 <- fit.variogram(vari_exp,vgm(patamar,"Gau",alcance,epepita))
+plot_my_models(modelo_1,modelo_2,modelo_3)
+```
+## PASSO 4) Escolha do melhor modelo
+
+O melhor modelo é aquele que apresenta um coeficiente de regressão o mais próximo de 01 e o interesepto o mais próximo de 0.
+
+```{r}
+conjunto_validacao <- df_aux_geo |>
+ as_tibble() |>
+ sample_n(300)
+sp::coordinates(conjunto_validacao) = ~longitude + latitude
+modelos<-list(modelo_1,modelo_2,modelo_3)
+for(j in 1:3){
+ est<-0
+ for(i in 1:nrow(conjunto_validacao)){
+   valid <- gstat::krige(formula=form, conjunto_validacao[-i,], conjunto_validacao, model=modelos[[j]])
+   est[i]<-valid$var1.pred[i]
+ }
+ obs<-as.data.frame(conjunto_validacao)[,3]
+ RMSE<-round((sum((obs-est)^2)/length(obs))^.5,3)
+ mod<-lm(obs~est)
+ b<-round(mod$coefficients[2],3)
+ se<-round(summary(mod)$coefficients[4],3)
+r2<-round(summary(mod)$r.squared,3)
+ a<-round(mod$coefficients[1],3)
+ plot(est,obs,xlab="Estimado", ylab="Observado",pch=j,col="blue",
+      main=paste("Modelo = ",modelos[[j]][2,1],"; Coef. Reg. = ", b, " (SE = ",se, ", r2 = ", r2,")\ny intersept = ",a,"RMSE = ",RMSE ))
+ abline(lm(obs~est));
+ abline(0,1,lty=3)
+}
+```
+## PASSO 5) Definido o melhor modelo, precisamos guardar os valores.
+
+```{r}
+modelo <- modelo_1 ## sempre modificar
+# Salvando os parâmetros dos melhores modelo
+model <- modelo |> slice(2) |> pull(model)
+rss <- round(attr(modelo, "SSErr"),4)
+c0 <- round(modelo$psill[[1]],4)
+c0_c1 <- round(sum(modelo$psill),4)
+a <- ifelse(model == "Gau", round(modelo$range[[2]]*(3^.5),2),
+           ifelse(model == "Exp",round(3*modelo$range[[2]],2),
+           round(modelo$range[[2]],2)))
+
+
+r2 <- vari_exp |> add_column( model = model, a=a, c0 = c0,
+                                c0_c1 = c0_c1) |>
+mutate(
+     gamma_m = ifelse(model == "Sph",
+       ifelse(dist <= a, c0 + (c0_c1 - c0) * (3/2 * (dist/a) - 1/2 * (dist/a)^3),c0_c1), ifelse(model == "Exp", c0 + (c0_c1-c0)*(1-exp(-3*(dist/a))),c0 + (c0_c1-c0)*(1-exp(-(dist/a)^2)))),
+     residuo_total = (gamma-mean(gamma))^2,
+     residuo_mod = (gamma - gamma_m)^2
+   ) |>
+   summarise(
+     r2=(sum(residuo_total) - sum(residuo_mod))/sum(residuo_total)
+   ) |> pull(r2)
+
+tibble(
+meu_ano, minha_epoca, model, c0, c0_c1, a, rss, r2
+) |> mutate(gde = c0/c0_c1, .after = "a") |>
+ write_csv(paste0("../output/best-fit-sif/",meu_ano,"-",minha_epoca,".csv"))
+
+ls_csv <- list.files("../output/best-fit-sif/",full.names = TRUE,pattern = ".csv")
+map_df(ls_csv, read_csv) |>
+ writexl::write_xlsx("../output/semivariogram-models-sif.xlsx")
+png(filename = paste0("../output/semivar-sif-",meu_ano,"-",minha_epoca,".png"),
+   width = 800, height = 600)
+plot(vari_exp,model=modelo,cex.lab=2, col=1,pl=F,pch=16,cex=2.2,ylab=list("Semivariancia",cex=2.3),xlab=list("Distancia de Separacao h (m)",cex=2.3,cex.axis=4))
+dev.off()
+```
+
+## Passo 6 - Krigagem Ordinária - interpolação em locais não amostrados
+
+
+```{r}
+ko_variavel <- krige(formula=form, df_aux_geo, grid_quadrante, model=modelo,
+                   block=c(0.1,0.1),
+                  nsim=0,
+                 na.action=na.pass,
+                debug.level=-1
+)
+```
+
+Passo 7 - Visualização dos padrões espaciais e armazenamento dos dados e imagem.
+
+```{r}
+mapa <- as_tibble(ko_variavel) |>
+ggplot(aes(x=longitude, y=latitude)) +
+ geom_tile(aes(fill = var1.pred)) +
+ scale_fill_viridis_c() +
+ coord_equal() +
+ labs(x="Longitude",
+      y="Latitude",
+      fill="sif") +
+theme_bw()
+mapa
+ggsave(paste0("../output/mapas/kgr-sif-",meu_ano,"-",minha_epoca,".png"),
+     plot = mapa, width = 10, height = 8, dpi = 300)
+df <- ko_variavel |>
+ as_tibble()
+write_rds(df,paste0("../output/mapas/kgr-sif-",meu_ano,"-",minha_epoca,".rds"))
+```
+
+## KRIGAGEM DOS GURI DEU CERTO!!!!!!!
+## Compilar mapas gerados
+```{r}
+# PASSO 1: Listar os arquivos
+list_rds <- list.files("../output/mapas/",
+                       pattern = ".rds$",
+                       full.names = TRUE)
+
+# PASSO 2: Função corrigida para ler e processar cada arquivo
+rds_reader <- function(path){
+  nome_do_arquivo <- basename(path)
+  readr::read_rds(path) |>
+    mutate(
+      info = stringr::str_remove(nome_do_arquivo, "\\.rds$") |> 
+             stringr::str_remove("^kgr-xco2-"),
+      year = stringr::str_sub(info, 1, 4),
+      epoca_n = ifelse(stringr::str_detect(info, "Jan_Jun"), 1, 2),
+      year_epoca_label = paste0(year, "/epoca ", epoca_n)
+    ) |>
+    rename(
+      xco2 = var1.pred, 
+      xco2_std = var1.var,
+      latitude = latitude,
+      longitude = longitude
+    ) |>
+    select(latitude, longitude, xco2, xco2_std, year_epoca_label)
+}
+
+# PASSO 3: Aplicar a função e criar a tabela final
+kgr_maps <- map_df(list_rds, rds_reader)
+
+# PASSO 4: (NOVO) Calcular a anomalia para cada grupo
+kgr_maps <- kgr_maps |> 
+  group_by(year_epoca_label) |> 
+  mutate(xco2_anomaly = xco2 - median(xco2, na.rm = TRUE),
+         .after = xco2)
+
+# PASSO 5: Gerar o gráfico
+kgr_maps |> 
+  ggplot(aes(x = year_epoca_label, y = xco2)) +
+  geom_boxplot(fill = "gray") +
+  labs(
+    title = "Distribuição de XCO2 por Ano e Época",
+    x = "Ano e Época",
+    y = "XCO2"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Anomalia compilada de todas épocas
+```{r}
+kgr_maps |> 
+  group_by(year_epoca_label) |> 
+  ggplot(aes(year_epoca_label,xco2_anomaly)) +
+  geom_boxplot(fill="orange")+
+  theme_bw()
+```
+
+```{r}
+# virar data.frame com colunas latitude/longitude + atributos
+# grid_df <- as.data.frame(grid_quadrante)           # atributos (@data)
+# coords  <- sp::coordinates(grid_quadrante)         # matriz [lon, lat]
+# grid_df$longitude <- coords[,1]
+# grid_df$latitude  <- coords[,2]
+# 
+# # (opcional) padronizar casas decimais para evitar mismatch por flutuação
+# kgr_maps  <- kgr_maps  |> mutate(
+#   latitude  = round(latitude, 6),
+#   longitude = round(longitude, 6)
+# )
+# grid_df <- grid_df |> mutate(
+#   latitude  = round(latitude, 6),
+#   longitude = round(longitude, 6)
+# )
+# 
+# kgr_maps <- kgr_maps |>
+#   left_join(grid_df, by = c("latitude","longitude"))
+
+```
+
+## Padrões espaciais de XCO2 para o estado por época
+```{r}
+season <- kgr_maps |> pull(year_epoca_label) |> unique()
+map(season, ~{
+  kgr_maps |> 
+    filter(year_epoca_label == .x) |> 
+    ggplot(aes(x = longitude, y = latitude)) +
+    geom_tile(aes(fill = xco2)) +
+    scale_fill_viridis_c(option = "mako", direction = -1) + 
+    coord_equal() +
+    labs(x = "Longitude",
+         y = "Latitude",
+         fill = "XCO2",
+         title = .x) +
+    theme_bw()
+}) 
+```
+
+## Padrões espaciais de anomalia de xco2 por estação
+```{r}
+season <- kgr_maps |> pull(year_epoca_label) |> unique()
+map(season, ~{
+  kgr_maps |> 
+    filter(year_epoca_label == .x) |> 
+    ggplot(aes(x = longitude, y = latitude)) +
+    geom_tile(aes(fill = xco2_anomaly)) +
+    scale_fill_viridis_c(option = "inferno", direction = -1) + 
+    coord_equal() +
+    labs(x = "Longitude",
+         y = "Latitude",
+         fill = "XCO2",
+         title = .x) +
+    theme_bw()
+})
+```
+
+
+```{r}
+map(unique(kgr_maps$year_epoca_label), ~{
+  
+  # Identificar hotspots 
+  hotspots <- kgr_maps |>
+    dplyr::filter(year_epoca_label == .x) |> 
+    dplyr::slice_max(xco2_anomaly, n = 5, with_ties = FALSE) |>
+    dplyr::mutate(tipo = "hotspot")  
+  
+  coldspots <- kgr_maps |>
+    dplyr::filter(year_epoca_label == .x) |> 
+    dplyr::slice_min(xco2_anomaly, n = 5, with_ties = FALSE) |>
+    dplyr::mutate(tipo = "coldspot")  
+  
+  pontos_destaque <- dplyr::bind_rows(hotspots, coldspots)
+  
+  kgr_maps |> 
+    dplyr::filter(year_epoca_label == .x) |> 
+    ggplot2::ggplot(ggplot2::aes(x = latitude, y = longitude)) +
+    ggplot2::geom_tile(ggplot2::aes(fill = xco2_anomaly)) +
+    ggplot2::geom_point(data = pontos_destaque,
+               ggplot2::aes(x = latitude, y = longitude, color = tipo),
+               shape = 21, size = 3, fill = "white", stroke = 1.2) +
+    ggplot2::scale_color_manual(values = c("hotspot" = "red", "coldspot" = "blue")) +
+    ggplot2::geom_point(
+      data = kgr_maps |> 
+        dplyr::filter(year_epoca_label == .x, xco2_anomaly > 0) |>
+        dplyr::summarise(
+          lon_centro = sum(longitude * xco2_anomaly, na.rm = TRUE) / sum(xco2_anomaly, na.rm = TRUE),
+          lat_centro = sum(latitude  * xco2_anomaly, na.rm = TRUE) / sum(xco2_anomaly, na.rm = TRUE)
+        ),
+      ggplot2::aes(x = lat_centro, y = lon_centro),  # <- atenção: eixos estão trocados no ggplot
+      color = "cyan", size = 2.5, shape = 4, stroke = 1.2) +
+    viridis::scale_fill_viridis(option = "inferno") +
+    ggplot2::coord_equal(
+      xlim = c(-12.3561, -1.6058),   # latitude (x no seu plot)
+      ylim = c(-59.7700, -49.8361),  # longitude (y no seu plot)
+      expand = FALSE
+    ) +
+    ggplot2::facet_wrap(~ year_epoca_label) +
+    ggplot2::labs(
+      x = "Longitude", y = "Latitude", fill = "xco2_anomaly",
+      title = .x
+    ) +
+    ggplot2::theme_bw()
+})
+
+
+```
+
+## Mapa de anomalia média
+```{r}
+kgr_maps |> 
+  group_by(longitude, latitude) |> 
+  summarise(
+    anomaly_xco2_mean = mean(xco2_anomaly, na.rm=TRUE)
+  ) |> 
+  ggplot(aes(x=longitude, y=latitude)) +
+  geom_tile(aes(fill = anomaly_xco2_mean)) +
+  scale_fill_viridis_c(option = "inferno") +
+  coord_equal() +
+  labs(x="Longitude",
+       y="Latitude",
+       fill="mean_anomaly_xco2") +
+  theme_bw()
+```
