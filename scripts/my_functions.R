@@ -55,35 +55,3 @@ def_pol <- function(x, y, pol){
                                   pol.x = pol[,1],
                                   pol.y = pol[,2]))
 }
-
-
-
-states <- geobr::read_state(showProgress = FALSE)
-## Buscando o estado a partir das coordenadas de um ponto...
-get_geobr_state <- function(x,y){
-  x <- as.vector(x[1])
-  y <- as.vector(y[1])
-  resul <- "Other"
-  lgv <- FALSE
-  for(i in 1:27){
-    lgv <- def_pol(x,y,list_pol[[i]])
-    if(lgv){
-      resul <- names(list_pol[i])
-    }else{
-      resul <- resul
-    }
-  }
-  return(as.vector(resul))
-}
-
-
-
-get_geobr_pol <- function(object_geom, i) {
-  object_geom$geom |> purrr::pluck(i) |> as.matrix()
-}
-
-# Criando lista de polígonos com todos os estados
-abbrev_states <- states$abbrev_state
-list_pol <- purrr::map(1:27, get_geobr_pol,object_geom=states)
-names(list_pol) <- abbrev_states
-cat("List of polygons loaded [list_pol]\n")
