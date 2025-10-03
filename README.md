@@ -24,8 +24,8 @@
 
 | Dados Processados Para Download |
 |:--:|
-| [data-set-xco2-br.rds](https://drive.google.com/file/d/1iq97nQyR-kKMEygV6C-2OsKE41mIkLF5/view?usp=sharing) ⬇️ |
-| [data-set-sif-br.rds](https://drive.google.com/file/d/1XgJXuvN8OmcmblG8TEgys_KSHkEIf9QO/view?usp=sharing) ⬇️ |
+| [data-set-xco2.rds](https://drive.google.com/file/d/1E6oYKw7WyBRcgLaiFlPP1-ZTXTG4QO-2/view?usp=sharing) ⬇️ |
+| [data-set-sif.rds](https://drive.google.com/file/d/1Tvy4T2O3YwY9sQwvHnDD3sZWkoqvwZbw/view?usp=sharing) ⬇️ |
 | [faxina-de-dados.R](https://raw.githubusercontent.com/arpanosso/projeto-mestrado-perim/refs/heads/master/data-raw/faxina-de-dados.R) |
 
 Formato dos arquivos:
@@ -36,299 +36,57 @@ Formato dos arquivos:
 
 ### 🧹 Faxina de dados
 
-#### Carregando o polígono do Brasil
+#### Carregando os polígonos do Brasil
 
 ``` r
-source("R/my_functions.R")
 country_br <- geobr::read_country(showProgress = FALSE)
 ```
 
 #### Carregando os dados
 
-Primeira Versão do Banco de dados, muito grande, pois os dados foram
-baixados para o mundo todo. Código abaixo cria um recorte a partir das
-coordenadas ondem está situao o Brasil, além disso são construídas as
-variávies de data, e salva uma nova versão dos dados.
-
 ``` r
 data_set_xco2 <- readr::read_rds("data/data-set-xco2.rds") |> 
-  dplyr::filter(
-    longitude >=-59.7700 & longitude <= -49.8361,
-    latitude >=-12.3561 & latitude <= -1.6058
-  ) |> 
   dplyr::mutate(
     time = lubridate::as_datetime(time, tz = "America/Sao_Paulo"),
     year = lubridate::year(time),
     month = lubridate::month(time),
     day = lubridate::day(time),
-  ) 
+  )
 dplyr::glimpse(data_set_xco2)
-readr::write_rds(data_set_xco2,"data/data-set-xco2-filter.rds")
+#> Rows: 14,113,963
+#> Columns: 10
+#> $ longitude         <dbl> -42.82634, -42.83171, -42.83667, -42.84213, -42.8476…
+#> $ latitude          <dbl> -22.90563, -22.91458, -22.89448, -22.90340, -22.9122…
+#> $ time              <dttm> 2020-01-01 13:41:10, 2020-01-01 13:41:10, 2020-01-0…
+#> $ xco2              <dbl> 411.1394, 408.3469, 408.4254, 409.1369, 409.6229, 40…
+#> $ xco2_quality_flag <int> 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0…
+#> $ xco2_incerteza    <dbl> 0.3705117, 0.3717737, 0.3879336, 0.4135483, 0.360514…
+#> $ path              <chr> "data-raw/2020/OCO2/oco2_LtCO2_200101_B11210Ar_24091…
+#> $ year              <dbl> 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020…
+#> $ month             <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+#> $ day               <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
 ```
 
 ``` r
-data_set_sif <- readr::read_rds("data/data-set-sif.rds") |> 
-  dplyr::filter(
-    longitude >=-59.7700 & longitude <= -49.8361,
-    latitude >=-12.3561 & latitude <= -1.6058
-  ) |>  
-  dplyr::mutate(
-    time = lubridate::as_datetime(time, 
-                                  origin = "1990-01-01 00:00:00",
-                                  tz = "America/Sao_Paulo"),
-    year = lubridate::year(time),
-    month = lubridate::month(time),
-    day = lubridate::day(time),
-  )
+data_set_sif <- readr::read_rds("data/data-set-sif-filter.rds")
 dplyr::glimpse(data_set_sif)
-readr::write_rds(data_set_sif,"data/data-set-sif-filter.rds")
-```
-
-## Filtrando os dados para Br
-
-Para filtar os dados para o território brasileiro, algumas correções dos
-polígonos do IBGE são necessárias, e realizadas abaixo. O filtro é
-realizado por região.
-
-``` r
-regiao <- geobr::read_region(showProgress = FALSE)
-pol_norte <- regiao$geom |> purrr::pluck(1) |> as.matrix()
-pol_nordeste <- regiao$geom |> purrr::pluck(2) |> as.matrix()
-pol_sudeste <- regiao$geom |> purrr::pluck(3) |> as.matrix()
-pol_sul <- regiao$geom |> purrr::pluck(4) |> as.matrix()
-pol_centroeste<- regiao$geom |> purrr::pluck(5) |> as.matrix()
-
-pol_nordeste <- pol_nordeste[pol_nordeste[,1]<=-34,]
-pol_nordeste <- pol_nordeste[!((pol_nordeste[,1]>=-38.7 & pol_nordeste[,1]<=-38.6) & pol_nordeste[,2]<= -15),]
-
-pol_nordeste <- pol_nordeste[pol_nordeste[,1]<=-34,]
-pol_nordeste <- pol_nordeste[!((pol_nordeste[,1]>=-38.7 & pol_nordeste[,1]<=-38.6) & pol_nordeste[,2]<= -15),]
-```
-
-# XCO2
-
-``` r
-# data_set_xco2 <- readr::read_rds("data/data-set-xco2.rds") |> 
-#   dplyr::mutate(
-#     time = lubridate::as_datetime(time, tz = "America/Sao_Paulo"),
-#     year = lubridate::year(time),
-#     month = lubridate::month(time),
-#     day = lubridate::day(time),
-#   ) 
-# dplyr::glimpse(data_set_xco2)
-```
-
-``` r
-# data_set_xco2_br <- data_set_xco2 |>
-#   dplyr::mutate(
-#     flag_norte = def_pol(longitude, latitude, pol_norte),
-#     flag_nordeste = def_pol(longitude, latitude, pol_nordeste),
-#     flag_sul = def_pol(longitude, latitude, pol_sul),
-#     flag_centroeste = def_pol(longitude, latitude, pol_centroeste),
-#     flag_suldeste = def_pol(longitude, latitude, pol_sudeste),
-#   )
-# readr::write_rds(data_set_xco2_br,"data/data-set-xco2-br.rds")
-```
-
-## Agora precisamos definir as regiões e estados
-
-``` r
-country_br |>
-  ggplot2::ggplot() +
-  ggplot2::geom_sf(fill="white", color="#FEBF57",
-                   size=.15, show.legend = FALSE) +
-  ggplot2::geom_point(data= dff |>
-                        dplyr::filter(
-                          country
-                        ) |> 
-                        dplyr::sample_n(15000),
-                      ggplot2::aes(x=longitude,y=latitude))
-```
-
-``` r
-dff <- readr::read_rds("data/data-set-xco2-br.rds") |> 
-  dplyr::filter(!((latitude > -22.5 & latitude < -20) & 
-                  (longitude > -40)) ) |> 
-  dplyr::mutate(
-    country = flag_nordeste|flag_norte|flag_suldeste|
-      flag_sul|flag_centroeste
-  )
-
-dff |>
-  dplyr::filter(
-    country
-  ) |> 
-  dplyr::sample_n(30000) |> 
-  ggplot2::ggplot(ggplot2::aes(longitude,latitude)) +
-  ggplot2::geom_point() # +
-  # ggplot2::coord_cartesian(xlim = c(-45,-35),ylim = c(-25,-15))
-```
-
-``` r
-municipality <- geobr::read_municipality()
-
-get_centroide <- function(df,coord){
-  pol_aux <- df |> purrr::pluck(1) |> as.matrix()
-  x <- mean(pol_aux[,1])
-  y <- mean(pol_aux[,2])
-  if(coord == "x") return(x)
-  if(coord == "y") return(y)
-}
-
-municipality_df <- municipality |> 
-  dplyr::group_by(abbrev_state,name_muni) |> 
-  dplyr::mutate(
-    lon_centroide = get_centroide(geom,"x"),
-    lat_centroide = get_centroide(geom,"y"),
-  ) |> 
-  dplyr::ungroup() 
-
-get_geobr_state_muni <- function(x1,y1,df){
-  df_aux <- df |>
-    dplyr::filter(
-      lon_centroide >= round(x1,1)-.10, lon_centroide <= round(x1,1)+.5,
-      lat_centroide >= round(y1,1)-.10, lat_centroide <= round(y1,1)+.5,
-    ) |> 
-    dplyr::mutate(distancia = sqrt((x1-lon_centroide)^2+(y1-lat_centroide)^2)) 
-  if(nrow(df_aux) == 0){
-    return("Other_Other")
-  }else{
-    list_pol <- purrr::map(1:nrow(df_aux), ~{
-      df_aux$geom |> purrr::pluck(.x) |> as.matrix()
-    })
-    
-    for(i in 1:nrow(df_aux)){
-      if(def_pol(x1, y1, list_pol[[i]])) {
-        index <- i
-        break
-      }
-    }
-    
-    if(i == nrow(df_aux)){return("Other")
-    }else{
-      name_muni <- df_aux |>
-        dplyr::slice(index) |> dplyr::pull(name_muni)
-      abbrev_state <- df_aux |>
-        dplyr::slice(index) |> dplyr::pull(abbrev_state)
-      return(paste0(name_muni,"_",abbrev_state))
-    }
-  }
-  return(df_aux)
-};get_geobr_state_muni(-73.57131,-6.98122,municipality_df)
-```
-
-``` r
-# Classificando pontos
-tictoc::tic()
-dff_sm <- dff |> 
-  dplyr::filter(
-    country,
-    xco2_quality_flag == 0,
-  ) |> 
-  # dplyr::sample_n(10000) |> 
-  dplyr::group_by(longitude,latitude) |> 
-  dplyr::mutate(
-    muni_state = get_geobr_state_muni(longitude,latitude,municipality_df)
-  ) |> 
-  dplyr::ungroup()
-tictoc::toc()
-readr::write_rds(dff_sm,"data/data-set-xco2-state-muni.rds")
-```
-
-# SIF
-
-``` r
-# data_set_sif <- readr::read_rds("data/data-set-sif.rds") |> 
-#   dplyr::mutate(
-#     time = lubridate::as_datetime(time, 
-#                                   origin = "1990-01-01 00:00:00",
-#                                   tz = "America/Sao_Paulo"),
-#     year = lubridate::year(time),
-#     month = lubridate::month(time),
-#     day = lubridate::day(time),
-#   )
-# dplyr::glimpse(data_set_sif)
-```
-
-``` r
-# data_set_sif_br <- data_set_sif |>
-#   dplyr::mutate(
-#     flag_norte = def_pol(longitude, latitude, pol_norte),
-#     flag_nordeste = def_pol(longitude, latitude, pol_nordeste),
-#     flag_sul = def_pol(longitude, latitude, pol_sul),
-#     flag_centroeste = def_pol(longitude, latitude, pol_centroeste),
-#     flag_suldeste = def_pol(longitude, latitude, pol_sudeste),
-#   )
-# readr::write_rds(data_set_sif_br,"data/data-set-sif-br.rds")
-```
-
-``` r
-# country_br |>
-#   ggplot2::ggplot() +
-#   ggplot2::geom_sf(fill="white", color="#FEBF57",
-#                    size=.15, show.legend = FALSE) +
-#   ggplot2::geom_point(data= data_set_sif_br |>
-#                         dplyr::sample_n(1000) |>
-#                         dplyr::filter(flag_nordeste) ,
-#                       ggplot2::aes(x=longitude,y=latitude),
-#                       shape=3,
-#                       col="red",
-#                       alpha=0.2)
-# 
-# # Classificando pontos
-# data_set <- dff
-# state <- 0
-# x <- data_set |> dplyr::pull(longitude)
-# y <- data_set |> dplyr::pull(latitude)
-# for(i in 1:nrow(data_set)) state[i] <- get_geobr_state(x[i],y[i])
-# data_set <- data_set |> cbind(state)
-# dplyr::glimpse(data_set)
-# readr::write_rds(data_set,"../data/oco2-sif.rds")
-```
-
-``` r
-dff <- readr::read_rds("data/data-set-sif-br.rds") |> 
-  dplyr::filter(!((latitude > -22.5 & latitude < -20) & 
-                  (longitude > -40)),
-                (quality_flag ==0 | quality_flag == 1)) |> 
-  dplyr::mutate(
-    country = flag_nordeste|flag_norte|flag_suldeste|
-      flag_sul|flag_centroeste
-  )
-
-dff |>
-  dplyr::filter(
-    country
-  ) |> 
-  dplyr::sample_n(30000) |> 
-  ggplot2::ggplot(ggplot2::aes(longitude,latitude)) +
-  ggplot2::geom_point() # +
-  # ggplot2::coord_cartesian(xlim = c(-45,-35),ylim = c(-25,-15))
-
-# Classificando pontos
-# data_set <- dff
-# state <- 0
-# x <- data_set |> dplyr::pull(longitude)
-# y <- data_set |> dplyr::pull(latitude)
-# for(i in 1:nrow(data_set)) state[i] <- get_geobr_state(x[i],y[i])
-# data_set <- data_set |> cbind(state)
-# dplyr::glimpse(data_set)
-# readr::write_rds(data_set,"../data/oco2-sif.rds")
-```
-
-``` r
-# Classificando pontos
-tictoc::tic()
-dff_sm <- dff |> 
-  dplyr::filter(
-    country,
-  ) |> 
-  # dplyr::sample_n(10000) |> 
-  dplyr::group_by(longitude,latitude) |> 
-  dplyr::mutate(
-    muni_state = get_geobr_state_muni(longitude,latitude,municipality_df)
-  ) |> 
-  dplyr::ungroup()
-tictoc::toc()
-readr::write_rds(dff_sm,"data/data-set-sif-state-muni.rds")
+#> Rows: 2,755,525
+#> Columns: 17
+#> $ time               <dttm> 2020-01-02 14:27:47, 2020-01-02 14:27:58, 2020-01-…
+#> $ sza                <dbl> 24.21838, 24.43658, 25.21167, 25.22522, 25.20837, 2…
+#> $ vza                <dbl> 18.96948, 19.25812, 19.79761, 19.75006, 19.91901, 1…
+#> $ saz                <dbl> 240.8419, 239.6188, 235.9193, 235.8642, 235.9224, 2…
+#> $ vaz                <dbl> 61.69757, 59.83484, 56.50873, 56.77283, 55.88147, 5…
+#> $ longitude          <dbl> -58.04297, -58.18042, -58.59381, -58.59863, -58.597…
+#> $ latitude           <dbl> -12.287109, -11.691345, -9.810913, -9.781616, -9.81…
+#> $ sif740             <dbl> 1.68288898, 2.33085060, 3.39827824, 3.13973331, 1.7…
+#> $ sif740_uncertainty <dbl> 0.6398249, 0.5907574, 0.5819044, 0.6214972, 0.57474…
+#> $ daily_sif740       <dbl> 0.60762787, 0.83928204, 1.21343613, 1.12081718, 0.6…
+#> $ daily_sif757       <dbl> 0.43646145, 0.56351566, 0.39550304, 0.42863560, 0.3…
+#> $ daily_sif771       <dbl> 0.24913883, 0.37035179, 0.81494141, 0.71052551, 0.3…
+#> $ quality_flag       <int> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
+#> $ path               <chr> "data-raw/2020/OCO2 SIF/oco2_LtSIF_200102_B11012Ar_…
+#> $ year               <dbl> 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 202…
+#> $ month              <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+#> $ day                <int> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
 ```
